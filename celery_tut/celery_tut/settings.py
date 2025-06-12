@@ -31,6 +31,7 @@ ALLOWED_HOSTS = []
 # Celery settings
 CELERY_BROKER_URL = 'sqla+postgresql://postgres:Zaina_2025@localhost:5432/mydb'
 CELERY_RESULT_BACKEND = 'django-db'
+CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
 
 # Optional (for periodic tasks)
 CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
