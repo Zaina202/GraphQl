@@ -1,70 +1,71 @@
-import sys
+
+# tasks.py
+import pandas as pd
+import tempfile
 import logging
-import csv
-from .models import UploadedFile, Person
+from django.core.files import File
+from django.core.mail import EmailMessage
+from django.core.mail import send_mail
+from django.conf import settings
+from django.contrib.auth import get_user_model
 from celery import shared_task
+from .models import UploadedFile
+from graphene_django.settings import graphene_settings
 
 logger = logging.getLogger(__name__)
 
+
 @shared_task
-def process_csv(file_id):
-    print("Hello from process_csv task", file=sys.stderr, flush=True)
+def export_agchart_females_to_excel(file_id):
+    print("Task started")
     try:
-        print("process start", file=sys.stderr, flush=True)
-        
         file_record = UploadedFile.objects.get(id=file_id)
-        
-        print(f"File path: {file_record.file.path}", file=sys.stderr, flush=True)
+        print("File record found:", file_id)
+        schema = graphene_settings.SCHEMA
+        query = '''
+        query {
+            femaleNamesWithCounts {
+                name
+                count
+            }
+        }
+        '''
+        result = schema.execute(query)
 
-        # Read CSV file
-        try:
-            with open(file_record.file.path, 'r', encoding='utf-8') as f:
-                # Skip header row
-                next(f)
-                
-                # Process each row
-                for index, row in enumerate(csv.reader(f), start=1):
-                    try:
-                        # Skip if row doesn't have enough columns
-                        if len(row) < 3:
-                            logger.warning(f"Skipping row {index} due to insufficient columns")
-                            continue
-                            
-                        name, age, gender = row
-                        
-                        # Skip if any required field is empty
-                        if not name.strip() or not age.strip() or not gender.strip():
-                            logger.warning(f"Skipping row {index} due to empty values")
-                            continue
-                            
-                        # Convert values to appropriate types
-                        try:
-                            name = name.strip()
-                            age = int(float(age))  # Handle both integer and float values
-                            gender = gender.strip()
-                            
-                            Person.objects.create(
-                                name=name,
-                                age=age,
-                                gender=gender
-                            )
-                            logger.info(f"Successfully created record for {name}")
-                        except ValueError as ve:
-                            logger.error(f"Error converting values in row {index}: {ve}")
-                            continue
-                            
-                    except Exception as inner_e:
-                        logger.error(f"Error processing row {index}: {inner_e}")
-                        continue
-                        
+        if result.errors:
+            file_record.status = 'failed - query error'
+            file_record.save()
+            logger.error(f"GraphQL error: {result.errors}")
+            return
+
+        data = result.data['femaleNamesWithCounts']
+        df = pd.DataFrame(data)
+
+        with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as tmp:
+            df.to_excel(tmp.name, index=False)
+            tmp.seek(0)
+            file_record.file.save(f"female_names_{file_id}.xlsx", File(tmp))
             file_record.status = 'saved to database'
-            
-        except Exception as e:
-            logger.error(f"Error processing CSV file: {e}")
-            file_record.status = 'failed - file processing error'
-            
-    except Exception as e:
-        logger.error(f"Error processing file_id={file_id}: {e}")
-        file_record.status = 'failed'
-    file_record.save()
+            file_record.save()
 
+        subject = "GraphQl query results"
+        message = "Attached is the Excel export of query results."
+
+        User = get_user_model()
+        superusers = User.objects.filter(is_superuser=True)
+        to_emails = [u.email for u in superusers if u.email]
+        print("Email sending to:", to_emails)
+        if to_emails:
+            email = EmailMessage(
+                subject,
+                message,
+                settings.DEFAULT_FROM_EMAIL,
+                to_emails,
+            )
+            email.attach_file(file_record.file.path)
+            email.send(fail_silently=False)
+
+    except Exception as e:
+        logger.error(f"Export error: {e}")
+        file_record.status = 'failed'
+        file_record.save()

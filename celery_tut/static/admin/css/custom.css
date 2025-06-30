@@ -1,0 +1,5 @@
+/* static/admin/css/custom.css */
+#site-name a {
+    color: #28a745 !important;
+    font-weight: bold;
+}

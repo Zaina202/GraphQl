@@ -29,7 +29,9 @@ ALLOWED_HOSTS = []
 
 
 # Celery settings
-CELERY_BROKER_URL = 'sqla+postgresql://postgres:Zaina_2025@localhost:5432/mydb'
+# CELERY_BROKER_URL = 'sqla+postgresql://postgres:Zaina_2025@localhost:5432/mydb'
+CELERY_BROKER_URL = 'redis://localhost:6379/0'
+
 CELERY_RESULT_BACKEND = 'django-db'
 CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
 
@@ -48,6 +50,7 @@ INSTALLED_APPS = [
     'first_celery_app',
     'django_celery_results',
     'django_celery_beat',
+    'graphene_django',
 ]
 
 MIDDLEWARE = [
@@ -144,4 +147,27 @@ LOGGING = {
         'handlers': ['console'],
         'level': 'INFO',
     },
+}
+
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'zainarabah2020@gmail.com'
+EMAIL_HOST_PASSWORD = 'ozptvvytdcrkafhk'
+DEFAULT_FROM_EMAIL = 'zainarabah2020@gmail.com'
+
+
+# settings.py
+import os
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Ensure your templates directory is loaded
+TEMPLATES[0]['DIRS'] = [BASE_DIR / 'first_celery_app' / 'templates']
+
+# Static files for CSS/JS
+STATICFILES_DIRS = [BASE_DIR / "static"]
+
+GRAPHENE = {
+    "SCHEMA": "first_celery_app.schema.schema",  # Adjust to your actual module path
 }

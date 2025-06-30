@@ -1,0 +1,9 @@
+{% extends "admin/base.html" %}
+
+{% block title %}My Custom Admin{% endblock %}
+
+{% block branding %}
+  <h1 id="site-name">
+    <a href="{% url 'admin:index' %}">📚 Library Admin</a>
+  </h1>
+{% endblock %}
