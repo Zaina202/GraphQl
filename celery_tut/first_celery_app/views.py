@@ -1,8 +1,11 @@
 from django.http import JsonResponse
+from .models import UploadedFile,UploadeFile,Person, Book, Author
 from .tasks import export_agchart_females_to_excel
 from django.views.decorators.csrf import csrf_exempt
+import openpyxl
+from django.http import JsonResponse
+from django.core.files.storage import default_storage
 import pandas as pd
-from .models import UploadeFile, UploadedFile, Person, Book, Author
 
 @csrf_exempt
 def export_females_view(request):
@@ -47,10 +50,9 @@ def upload_excel_view(request):
                     Book.objects.create(
                         title=row['title'],
                         author=author,
-                        published_date=str(row['published_date'].date()) if pd.notnull(row['published_date']) else None,
-                        status=row['status'].lower()
+                        published_date=row['published_date'],
+                        status=row['status'].lower()  # Assuming 'draft'/'published'
                     )
-
             else:
                 return JsonResponse({'error': 'Invalid model type'}, status=400)
 
@@ -60,4 +62,3 @@ def upload_excel_view(request):
             return JsonResponse({'error': str(e)}, status=500)
 
     return JsonResponse({'error': 'Only POST allowed'}, status=405)
-

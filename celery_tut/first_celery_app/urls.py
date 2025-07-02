@@ -6,6 +6,6 @@ from django.views.decorators.csrf import csrf_exempt
 urlpatterns = [
     path('export-females/', export_females_view, name='export-females'),
     path("graphql/", csrf_exempt(GraphQLView.as_view(graphiql=True))),
-        path('upload-excel/', upload_excel_view, name='upload-excel'),
+    path('upload-excel/', upload_excel_view, name='upload-excel'),
 
 ]
